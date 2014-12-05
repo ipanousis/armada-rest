@@ -7,3 +7,9 @@ $ pip install PyYAML
 $ pip install port-for
 $ pip install --quiet https://storage.googleapis.com/archive.clusterhq.com/downloads/flocker/Flocker-0.3.2-py2-none-any.whl
 ```
+
+Install and start
+```
+$ systemctl enable `pwd`/armada_rest.service
+$ systemctl start armada_rest
+```
