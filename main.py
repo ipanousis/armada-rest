@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
-import pdb
+import sys
 import json
 import yaml
 import state
 import docker
+import shutil
 import os.path
 import subprocess
 import ConfigParser as cp
+from fabric.api import sudo as remote_sudo
 
 from flask import Flask, request
 
@@ -16,11 +18,12 @@ import flocker_config.deployment as dep_lib
 
 is_flocker_runtime = lambda name : name.startswith('flocker--')
 
-ETC = '/root/armada-rest'
+ETC = sys.argv[1]
 
 get_configuration = lambda file : os.path.join(ETC, file)
 
 FILE_CLUSTER_PROPERTIES = get_configuration('cluster.properties')
+FILE_INIT_APP_YML = get_configuration('init-application.yml')
 FILE_APP_YML = get_configuration('application.yml')
 FILE_DEP_YML = get_configuration('deployment.yml')
 
@@ -135,4 +138,6 @@ def delete_runtime(runtime):
   return result[0]
 
 if __name__ == '__main__':
+  if not os.path.isfile(FILE_APP_YML):
+    shutil.copy(FILE_INIT_APP_YML, FILE_APP_YML)
   app.run(host='0.0.0.0', debug=True)
