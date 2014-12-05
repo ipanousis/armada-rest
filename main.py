@@ -65,6 +65,8 @@ def put_runtime():
 
   assert len(new_runtime_config.keys()) == 1
 
+  new_runtime_name = new_runtime_config.keys()[0]
+
   # ultimate version:
   # get state from etcd in order to get running containers
   # inspect those containers and derive their fig.yml
@@ -76,6 +78,7 @@ def put_runtime():
   # reconstruct deployment.yml yaml string
 
   runtimes = json.loads(get_runtimes(flocker_only=True))
+  runtimes = runtimes['runtimes']
 
   print runtimes
   
@@ -88,7 +91,7 @@ def put_runtime():
 
   print new_runtime_config
 
-  assert new_runtime_config.keys()[0] not in app_config.keys()
+  assert new_runtime_name not in app_config.keys()
 
   app_config.update(new_runtime_config)
   
@@ -96,20 +99,26 @@ def put_runtime():
  
   dep_config = {}
   nodes = set([runtime['host'] for runtime in runtimes])
-  [dep_config.__setitem__(node, []) for node in nodes]
+  [dep_config.__setitem__(str(node), []) for node in nodes]
   for runtime in runtimes:
-    app = get_app_name_from_runtime_name(runtime['name'])
+    app = get_app_name_from_runtime_name(str(runtime['name']))
     dep_config[runtime['host']].append(app)
+
+  least_apps_node = min(dep_config.keys(), key = (lambda node : len(dep_config[node])))
+
+  dep_config[least_apps_node].append(new_runtime_name)
+
+  dep_config = { "version" : 1, "nodes" : dep_config }
 
   print dep_config
 
-  #app_yml = open('application.yml', 'w')
-  #app_yml.write(yaml.dump(app_config))
-  #app_yml.close()
+  app_yml = open('application.yml', 'w')
+  app_yml.write(yaml.dump(app_config))
+  app_yml.close()
 
-  #dep_yml = open('deployment.yml', 'w')
-  #dep_yml.write(yaml.dump(dep_config))
-  #dep_yml.close()
+  dep_yml = open('deployment.yml', 'w')
+  dep_yml.write(yaml.dump(dep_config))
+  dep_yml.close()
 
   return 'True'
 
