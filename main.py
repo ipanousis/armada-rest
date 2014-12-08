@@ -109,7 +109,8 @@ def put_runtime():
   proc = subprocess.Popen('flocker-deploy %s %s' % (FILE_DEP_YML, FILE_APP_YML),
                           shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   result = proc.communicate()
-  return result[0]
+
+  return json.dumps({ 'stdout' : result[0], 'stderr' : result[1] }, indent=4)
 
 @app.route('/flocker/runtime/<runtime>', methods = ['DELETE'])
 def delete_runtime(runtime):
@@ -140,4 +141,4 @@ def delete_runtime(runtime):
 if __name__ == '__main__':
   if not os.path.isfile(FILE_APP_YML):
     shutil.copy(FILE_INIT_APP_YML, FILE_APP_YML)
-  app.run(host='0.0.0.0', debug=True)
+  app.run(host='0.0.0.0', debug=True, threaded=True)
