@@ -9,9 +9,9 @@ import shutil
 import os.path
 import subprocess
 import ConfigParser as cp
-from fabric.api import sudo as remote_sudo
 
 from flask import Flask, request
+from flask.ext.cors import CORS
 
 import flocker_config.application as app_lib
 import flocker_config.deployment as dep_lib
@@ -31,6 +31,7 @@ config = cp.ConfigParser()
 config.readfp(open(FILE_CLUSTER_PROPERTIES,'r'))
 
 app = Flask(__name__)
+cors = CORS(app)
 
 flocker_state = state.State(config)
 
