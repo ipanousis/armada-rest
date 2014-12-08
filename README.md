@@ -16,3 +16,6 @@ Run:
 ```
 $ docker run -d --net=host -i -t ipanousis/armada-rest
 ```
+
+TODO:
+- (to fix bug) store application.yml in etcd in order to make each instance of armada-rest stateless
