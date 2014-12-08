@@ -141,4 +141,6 @@ def delete_runtime(runtime):
 if __name__ == '__main__':
   if not os.path.isfile(FILE_APP_YML):
     shutil.copy(FILE_INIT_APP_YML, FILE_APP_YML)
-  app.run(host='0.0.0.0', debug=True, threaded=True)
+  # ideally this should be threaded but it cannot be because flocker-deploy
+  # is not to be executed in parallel 
+  app.run(host='0.0.0.0', debug=True)
