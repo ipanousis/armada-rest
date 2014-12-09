@@ -111,9 +111,9 @@ def put_runtime():
 @app.route('/flocker/runtime/<runtime>', methods = ['DELETE'])
 def delete_runtime(runtime):
 
-  current_applications = app_lib.load_current_from_file(FILE_APP_YML)
-
   current_runtimes = flocker_state.get_runtimes(flocker_only=True)
+
+  current_applications = app_lib.load_current_from_etcd(current_runtimes, etcd_client)
 
   current_deployments = dep_lib.load_current(current_runtimes)
 
