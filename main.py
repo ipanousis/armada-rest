@@ -6,7 +6,6 @@ import yaml
 import etcd
 import state
 import docker
-import shutil
 import os.path
 import subprocess
 import ConfigParser as cp
@@ -47,11 +46,34 @@ def write_yaml(yaml_filename, yaml_object):
   with open(yaml_filename, 'w') as yaml_file:
     yaml_file.write(yaml.dump(yaml_object))
 
+def flocker_deploy(deployment_yml, application_yml):
+  write_yaml(FILE_APP_YML, application_yml)
+  write_yaml(FILE_DEP_YML, deployment_yml)
+  proc = subprocess.Popen('flocker-deploy %s %s' % (FILE_DEP_YML, FILE_APP_YML),
+                          shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  result = proc.communicate()
+  return result[0], result[1]
+
 @app.route('/flocker/runtimes', methods = ['GET'])
 def get_runtimes():
   flocker_only = request.args.get('flocker_only', False)
   runtimes = { 'runtimes' : flocker_state.get_runtimes(flocker_only) }
   return json.dumps(runtimes, indent=4)
+
+@app.route('/flocker/runtime/<application>', methods = ['GET'])
+def get_runtime(application):
+  not_flocker = request.args.get('not_flocker', False)
+  flocker_prefix = ('' if not_flocker else 'flocker--')
+  return json.dumps(flocker_state.get_runtime(flocker_prefix + application), indent=4)
+
+@app.route('/flocker/runtime/<application>/port/<port>', methods = ['GET'])
+def get_runtime_port(application, port):
+  not_flocker = request.args.get('not_flocker', False)
+  flocker_prefix = ('' if not_flocker else 'flocker--')
+  runtime = flocker_state.get_runtime(flocker_prefix + application)
+  requested_port = [each_port['external'] for each_port in runtime['ports'] if port == each_port['internal']]
+  assert len(requested_port) > 0
+  return str(requested_port[0])
 
 @app.route('/flocker/nodes', methods = ['GET'])
 def get_nodes():
@@ -67,27 +89,19 @@ def put_image(image):
     cli = docker.Client(base_url='tcp://%s:4243' % node)
     for line in cli.pull(image, stream=True):
       print(json.dumps(json.loads(line), indent=4))
-  return 'True'
+  return 'Image successfully pulled: %s' % image
 
 @app.route('/flocker/runtime', methods=['PUT'])
 def put_runtime():
-  # ultimate version:
-  # get state from etcd in order to get running containers
-  # inspect those containers and derive their fig.yml
-  # reconstruct application.yml yaml string
-  #
-  # process the given fig.yml for its exposed port to be random
-  # append given fig.yml to applicaiton.yml yaml string
-  # choose a node to deploy this runtime to
-  # reconstruct deployment.yml yaml string
-
   uploaded_files = request.files.values()
   assert len(uploaded_files) > 0
   file_string = get_content_from_stream(uploaded_files[0].stream)
 
-  current_runtimes = flocker_state.get_runtimes(flocker_only=True)
-
   new_application = app_lib.load_new(file_string)
+
+
+
+  current_runtimes = flocker_state.get_runtimes(flocker_only=True)
 
   current_applications = app_lib.load_current_from_etcd(current_runtimes, etcd_client)
 
@@ -99,14 +113,8 @@ def put_runtime():
 
   print new_applications['yml']
   print new_deployments
-
-  write_yaml(FILE_APP_YML, new_applications['yml'])
-  write_yaml(FILE_DEP_YML, new_deployments)
-
-  proc = subprocess.Popen('flocker-deploy %s %s' % (FILE_DEP_YML, FILE_APP_YML),
-                          shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  result = proc.communicate()
-  return json.dumps({ 'stdout' : result[0], 'stderr' : result[1] }, indent=4)
+  stdout, stderr = flocker_deploy(new_deployments, new_applications['yml'])
+  return json.dumps({ 'stdout' : stdout, 'stderr' : stderr }, indent=4)
 
 @app.route('/flocker/runtime/<runtime>', methods = ['DELETE'])
 def delete_runtime(runtime):
@@ -126,13 +134,8 @@ def delete_runtime(runtime):
 
   print current_applications['yml']
   print current_deployments
-
-  write_yaml(FILE_APP_YML, current_applications['yml'])
-  write_yaml(FILE_DEP_YML, current_deployments)
-  proc = subprocess.Popen('flocker-deploy %s %s' % (FILE_DEP_YML, FILE_APP_YML),
-                          shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  result = proc.communicate()
-  return result[0]
+  stdout, stderr = flocker_deploy(current_deployments, current_applications['yml'])
+  return json.dumps({ 'stdout' : stdout, 'stderr' : stderr }, indent=4)
 
 if __name__ == '__main__':
   # this should not really be threaded because flocker-deploy should not be run in parallel

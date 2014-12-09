@@ -17,6 +17,11 @@ class State(object):
       runtimes = [c for c in runtimes if is_flocker_runtime(c['name'])]
     return list(runtimes)
 
+  def get_runtime(self, name):
+    runtime = [runtime for runtime in self._get_runtimes() if runtime['name'] == name]
+    assert len(runtime) > 0
+    return runtime[0]
+
   def _get_cluster_name(self):
     return self.configuration.get('default', 'name')
 
