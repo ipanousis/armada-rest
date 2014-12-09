@@ -3,6 +3,7 @@
 import sys
 import json
 import yaml
+import etcd
 import state
 import docker
 import shutil
@@ -23,7 +24,6 @@ ETC = sys.argv[1]
 get_configuration = lambda file : os.path.join(ETC, file)
 
 FILE_CLUSTER_PROPERTIES = get_configuration('cluster.properties')
-FILE_INIT_APP_YML = get_configuration('init-application.yml')
 FILE_APP_YML = get_configuration('application.yml')
 FILE_DEP_YML = get_configuration('deployment.yml')
 
@@ -33,7 +33,8 @@ config.readfp(open(FILE_CLUSTER_PROPERTIES,'r'))
 app = Flask(__name__)
 cors = CORS(app)
 
-flocker_state = state.State(config)
+etcd_client = etcd.Client(host='etcd.flocker.kalamia.in',port=80)
+flocker_state = state.State(etcd_client)
 
 def get_cluster_name():
   return config.get('default', 'name')
@@ -46,22 +47,16 @@ def write_yaml(yaml_filename, yaml_object):
   with open(yaml_filename, 'w') as yaml_file:
     yaml_file.write(yaml.dump(yaml_object))
 
-@app.route('/flocker/state/runtimes', methods = ['GET'])
+@app.route('/flocker/runtimes', methods = ['GET'])
 def get_runtimes():
   flocker_only = request.args.get('flocker_only', False)
   runtimes = { 'runtimes' : flocker_state.get_runtimes(flocker_only) }
   return json.dumps(runtimes, indent=4)
 
-@app.route('/flocker/state/nodes', methods = ['GET'])
+@app.route('/flocker/nodes', methods = ['GET'])
 def get_nodes():
   nodes = { 'nodes' : flocker_state.get_nodes() }
   return json.dumps(nodes, indent=4)
-
-@app.route('/flocker/state')
-def get_state():
-  current_flocker_state = flocker_state.get()
-  current_flocker_state = { 'flocker_state' : current_flocker_state }
-  return json.dumps(current_flocker_state, indent=4)
 
 @app.route('/flocker/image/<path:image>', methods = ['PUT'])
 def put_image(image):
@@ -90,12 +85,13 @@ def put_runtime():
   assert len(uploaded_files) > 0
   file_string = get_content_from_stream(uploaded_files[0].stream)
 
-  new_application = app_lib.load_new(file_string)
-  current_applications = app_lib.load_current_from_file(FILE_APP_YML)
-
   current_runtimes = flocker_state.get_runtimes(flocker_only=True)
 
-  new_applications = app_lib.add_new_application(current_applications, current_runtimes, new_application)
+  new_application = app_lib.load_new(file_string)
+
+  current_applications = app_lib.load_current_from_etcd(current_runtimes, etcd_client)
+
+  new_applications = app_lib.add_new_application(current_applications, current_runtimes, new_application, etcd_client)
 
   current_deployments = dep_lib.load_current(current_runtimes)
 
@@ -110,7 +106,6 @@ def put_runtime():
   proc = subprocess.Popen('flocker-deploy %s %s' % (FILE_DEP_YML, FILE_APP_YML),
                           shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   result = proc.communicate()
-
   return json.dumps({ 'stdout' : result[0], 'stderr' : result[1] }, indent=4)
 
 @app.route('/flocker/runtime/<runtime>', methods = ['DELETE'])
@@ -140,8 +135,7 @@ def delete_runtime(runtime):
   return result[0]
 
 if __name__ == '__main__':
-  if not os.path.isfile(FILE_APP_YML):
-    shutil.copy(FILE_INIT_APP_YML, FILE_APP_YML)
-  # ideally this should be threaded but it cannot be because flocker-deploy
-  # is not to be executed in parallel 
-  app.run(host='0.0.0.0', debug=True)
+  # this should not really be threaded because flocker-deploy should not be run in parallel
+  # however it is very slow when single-threaded, so solving this problem is top priority
+  # TODO: make put_runtime endpoint work asynchronously by adding a creation task to a queue
+  app.run(host='0.0.0.0', debug=True, threaded=True)

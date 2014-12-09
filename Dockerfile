@@ -1,8 +1,8 @@
 FROM centos:centos7
 
 RUN yum -y install https://download.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-2.noarch.rpm
-RUN yum -y install python-pip gcc python-devel openssh sshpass openssh-clients
-RUN pip install requests Flask docker-py PyYAML port-for flask-cors
+RUN yum -y install python-pip gcc python-devel openssh sshpass openssh-clients libffi-devel
+RUN pip install requests Flask docker-py PyYAML port-for flask-cors python-etcd
 RUN pip install supervisor
 RUN pip install --upgrade pip
 RUN pip install --quiet https://storage.googleapis.com/archive.clusterhq.com/downloads/flocker/Flocker-0.3.2-py2-none-any.whl
