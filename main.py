@@ -18,13 +18,13 @@ import flocker_config.deployment as dep_lib
 
 is_flocker_runtime = lambda name : name.startswith('flocker--')
 
-ETC = sys.argv[1]
+ETC = '/etc/armada-rest'
 
 get_configuration = lambda file : os.path.join(ETC, file)
 
-FILE_CLUSTER_PROPERTIES = get_configuration('cluster.properties')
-FILE_APP_YML = get_configuration('application.yml')
-FILE_DEP_YML = get_configuration('deployment.yml')
+FILE_CLUSTER_PROPERTIES = get_configuration('armada-rest.properties')
+TMP_APP_YML = '/tmp/application.yml'
+TMP_DEP_YML = '/tmp/deployment.yml'
 
 config = cp.ConfigParser()
 config.readfp(open(FILE_CLUSTER_PROPERTIES,'r'))
@@ -32,11 +32,11 @@ config.readfp(open(FILE_CLUSTER_PROPERTIES,'r'))
 app = Flask(__name__)
 cors = CORS(app)
 
-etcd_client = etcd.Client(host='etcd.flocker.kalamia.in',port=80)
-flocker_state = state.State(etcd_client)
-
 def get_cluster_name():
   return config.get('default', 'name')
+
+etcd_client = etcd.Client(host='etcd.%s' % get_cluster_name(),port=80)
+flocker_state = state.State(etcd_client)
 
 def get_content_from_stream(upload_stream):
   file_string = ''.join(upload_stream.readlines())

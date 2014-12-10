@@ -9,8 +9,11 @@ RUN pip install --quiet https://storage.googleapis.com/archive.clusterhq.com/dow
 
 RUN mkdir -p /var/log/supervisor
 RUN mkdir -p /etc/supervisor/conf.d
+RUN mkdir -p /etc/armada-rest
 
 EXPOSE 5000
+
+VOLUME /etc/armada-rest
 
 ADD . /app
 ADD etc /etc

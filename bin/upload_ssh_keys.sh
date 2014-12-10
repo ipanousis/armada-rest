@@ -8,7 +8,7 @@ if [[ ! -d /root/.ssh || ! -f /root/.ssh/id_rsa.pub ]] ; then
   ssh-keygen -f /root/.ssh/id_rsa -N ""
 fi
 
-NODES=`curl localhost:5000/flocker/state/nodes | egrep -o "([0-9]+\.){3}[0-9]+"`
+NODES=`curl localhost:5000/flocker/nodes | egrep -o "([0-9]+\.){3}[0-9]+"`
 
 for NODE in $NODES; do
   sshpass -p kattlefish ssh-copy-id -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$NODE
