@@ -91,15 +91,32 @@ def put_image(image):
       print(json.dumps(json.loads(line), indent=4))
   return 'Image successfully pulled: %s' % image
 
-@app.route('/flocker/runtime', methods=['PUT'])
-def put_runtime():
+def check_is_image_pulled(image):
+  repository, tag = image.split(':')[0], 'latest' if not ':' in image else image.split(':')[1]
+  nodes = flocker_state.get_nodes()
+  for node in nodes:
+    cli = docker.Client(base_url='tcp://%s:4243' % node)
+    image_objects = cli.images(repository)
+    if len(image_objects) == 0:
+      return False
+    images_with_tags = []
+    [images_with_tags.extend(i['RepoTags']) for i in image_objects]
+    tags = [i.split(':')[1] for i in images_with_tags]
+    if not tag in tags:
+      return False
+  return True
+
+@app.route('/flocker/runtime/<runtime>', methods=['PUT'])
+def put_runtime(runtime):
   uploaded_files = request.files.values()
   assert len(uploaded_files) > 0
   file_string = get_content_from_stream(uploaded_files[0].stream)
 
   new_application = app_lib.load_new(file_string)
+  new_application['name'] = runtime
 
-
+  is_pulled = check_is_image_pulled(new_application['image'])
+  assert is_pulled
 
   current_runtimes = flocker_state.get_runtimes(flocker_only=True)
 
