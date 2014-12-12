@@ -1,6 +1,6 @@
 FROM centos:centos7
 
-RUN yum -y install https://download.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-2.noarch.rpm
+RUN yum -y install https://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-5.noarch.rpm
 RUN yum -y install python-pip gcc python-devel openssh sshpass openssh-clients libffi-devel openssl-devel
 RUN pip install requests Flask docker-py PyYAML port-for flask-cors python-etcd
 RUN pip install supervisor
