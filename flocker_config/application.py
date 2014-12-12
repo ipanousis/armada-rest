@@ -8,6 +8,8 @@ def load_new(app_yaml_string):
   return { 'name' : new_runtime_name, 'yml' : new_runtime_config }
 
 def load_current(app_yaml_string):
+  if not app_yaml_string:
+    return { 'names' : [], 'yml' : {}}
   current_config = yaml.load(app_yaml_string)
   return { 'names' : current_config.keys(), 'yml' : current_config }
 

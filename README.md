@@ -1,5 +1,6 @@
 ```
 $ yum -y install python-pip OR apt-get -y install python-pip
+$ pip install python-etcd
 $ pip install requests
 $ pip install Flask
 $ pip install docker-py

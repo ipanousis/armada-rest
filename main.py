@@ -47,9 +47,9 @@ def write_yaml(yaml_filename, yaml_object):
     yaml_file.write(yaml.dump(yaml_object))
 
 def flocker_deploy(deployment_yml, application_yml):
-  write_yaml(FILE_APP_YML, application_yml)
-  write_yaml(FILE_DEP_YML, deployment_yml)
-  proc = subprocess.Popen('flocker-deploy %s %s' % (FILE_DEP_YML, FILE_APP_YML),
+  write_yaml(TMP_APP_YML, application_yml)
+  write_yaml(TMP_DEP_YML, deployment_yml)
+  proc = subprocess.Popen('flocker-deploy %s %s' % (TMP_DEP_YML, TMP_APP_YML),
                           shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   result = proc.communicate()
   return result[0], result[1]
@@ -72,7 +72,8 @@ def get_runtime_port(application, port):
   flocker_prefix = ('' if not_flocker else 'flocker--')
   runtime = flocker_state.get_runtime(flocker_prefix + application)
   requested_port = [each_port['external'] for each_port in runtime['ports'] if port == each_port['internal']]
-  assert len(requested_port) > 0
+  if len(requested_port) == 0:
+    return 'Port %d requested not found for application %s' % (port, application), 404
   return str(requested_port[0])
 
 @app.route('/flocker/nodes', methods = ['GET'])
@@ -109,14 +110,20 @@ def check_is_image_pulled(image):
 @app.route('/flocker/runtime/<runtime>', methods=['PUT'])
 def put_runtime(runtime):
   uploaded_files = request.files.values()
-  assert len(uploaded_files) > 0
+  if len(uploaded_files) == 0:
+    return 'No application YAML was uploaded', 401
   file_string = get_content_from_stream(uploaded_files[0].stream)
 
   new_application = app_lib.load_new(file_string)
+  runtime = str(runtime) # convert from u'xx' to 'xx'
   new_application['name'] = runtime
 
-  is_pulled = check_is_image_pulled(new_application['image'])
-  assert is_pulled
+  print new_application
+
+  image = new_application['yml'][runtime]['image']
+  is_pulled = check_is_image_pulled(image)
+  if not is_pulled:
+    return 'Image not pulled yet: %s' % image, 404
 
   current_runtimes = flocker_state.get_runtimes(flocker_only=True)
 
