@@ -116,9 +116,7 @@ def put_runtime(runtime):
 
   new_application = app_lib.load_new(file_string)
   runtime = str(runtime) # convert from u'xx' to 'xx'
-  new_application['name'] = runtime
-
-  print new_application
+  new_application = { 'name' : runtime, 'yml' : { runtime : new_application['yml'].values()[0] } }
 
   image = new_application['yml'][runtime]['image']
   is_pulled = check_is_image_pulled(image)
