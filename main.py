@@ -88,7 +88,7 @@ def put_image(image):
   nodes = flocker_state.get_nodes()
   for node in nodes:
     cli = docker.Client(base_url='tcp://%s:4243' % node)
-    for line in cli.pull(image, stream=True):
+    for line in cli.pull(image, stream=True, insecure_registry=True):
       print(json.dumps(json.loads(line), indent=4))
   return 'Image successfully pulled: %s' % image
 
