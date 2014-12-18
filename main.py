@@ -64,7 +64,11 @@ def get_runtimes():
 def get_runtime(application):
   not_flocker = request.args.get('not_flocker', False)
   flocker_prefix = ('' if not_flocker else 'flocker--')
-  return json.dumps(flocker_state.get_runtime(flocker_prefix + application), indent=4)
+  runtime = flocker_state.get_runtime(flocker_prefix + application)
+  if runtime != None:
+    return json.dumps(flocker_state.get_runtime(flocker_prefix + application), indent=4)
+  else:
+    return 'Runtime %s not found' % application, 404
 
 @app.route('/flocker/runtime/<application>/port/<port>', methods = ['GET'])
 def get_runtime_port(application, port):
@@ -140,6 +144,9 @@ def put_runtime(runtime):
 
 @app.route('/flocker/runtime/<runtime>', methods = ['DELETE'])
 def delete_runtime(runtime):
+  runtime = 'flocker--' + runtime
+  if flocker_state.get_runtime(runtime) == None:
+    return 'Runtime %s not found' % runtime, 404
 
   current_runtimes = flocker_state.get_runtimes(flocker_only=True)
 
