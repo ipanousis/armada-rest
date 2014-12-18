@@ -87,8 +87,6 @@ def get_nodes():
 
 @app.route('/flocker/image/<path:image>', methods = ['PUT'])
 def put_image(image):
-  if request.args.has_key('tag'):
-    image = image + ':' + request.args.get('tag')
   nodes = flocker_state.get_nodes()
   for node in nodes:
     cli = docker.Client(base_url='tcp://%s:4243' % node)
