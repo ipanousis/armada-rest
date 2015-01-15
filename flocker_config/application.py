@@ -37,7 +37,8 @@ def _get_application_definitions(etcd_client):
 
 def add_new_application(current_applications, current_runtimes, new_application, etcd_client):
   new_application_name = new_application['name']
-  assert new_application_name not in current_applications['names']
+  if new_application_name in current_applications['names']:
+    return None, 409
 
   # change external ports to a random port
   current_external_ports = []
@@ -60,4 +61,4 @@ def add_new_application(current_applications, current_runtimes, new_application,
   new_application_yaml_string = yaml.dump(new_application['yml'])
   etcd_client.write('flocker/applications/definitions/%s' % new_application_name, new_application_yaml_string)
 
-  return current_applications
+  return current_applications, None

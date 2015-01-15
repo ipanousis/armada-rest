@@ -137,7 +137,10 @@ def put_runtime(runtime):
 
   current_applications = app_lib.load_current_from_etcd(current_runtimes, etcd_client)
 
-  new_applications = app_lib.add_new_application(current_applications, current_runtimes, new_application, etcd_client)
+  new_applications, error_code = app_lib.add_new_application(current_applications, current_runtimes, new_application, etcd_client)
+
+  if error_code == 409:
+    return 'Runtime with name %s already exists' % runtime, error_code
 
   current_deployments = dep_lib.load_current(current_runtimes)
 
