@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import sys
 import json
 import yaml
 import etcd
@@ -8,10 +7,12 @@ import state
 import docker
 import os.path
 import subprocess
+import itertools
 import ConfigParser as cp
 
 from flask import Flask, request
 from flask.ext.cors import CORS
+from multiprocessing import Pool
 
 import flocker_config.application as app_lib
 import flocker_config.deployment as dep_lib
@@ -85,13 +86,20 @@ def get_nodes():
   nodes = { 'nodes' : flocker_state.get_nodes() }
   return json.dumps(nodes, indent=4)
 
+def pull_image_star(args):
+  return pull_image(*args)
+
+def pull_image(node, image):
+  docker_client = docker.Client(base_url='tcp://%s:4243' % node)
+  return docker_client.pull(image, insecure_registry=True)
+
 @app.route('/flocker/image/<path:image>', methods = ['PUT'])
 def put_image(image):
-  nodes = flocker_state.get_nodes()
-  for node in nodes:
-    cli = docker.Client(base_url='tcp://%s:4243' % node)
-    for line in cli.pull(image, stream=True, insecure_registry=True):
-      print(json.dumps(json.loads(line), indent=4))
+  nodes = list(flocker_state.get_nodes())
+  pool = Pool(len(nodes))
+  results = pool.map(pull_image_star, itertools.izip(nodes, itertools.repeat(image)))
+  pool.close()
+  pool.join()
   return 'Image successfully pulled: %s' % image
 
 def check_is_image_pulled(image):
@@ -142,7 +150,8 @@ def put_runtime(runtime):
 
 @app.route('/flocker/runtime/<runtime>', methods = ['DELETE'])
 def delete_runtime(runtime):
-  runtime = 'flocker--' + runtime
+  runtime = str(runtime)
+  print runtime
   if flocker_state.get_runtime(runtime) == None:
     return 'Runtime %s not found' % runtime, 404
 

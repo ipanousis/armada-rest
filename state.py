@@ -18,6 +18,7 @@ class State(object):
     return list(runtimes)
 
   def get_runtime(self, name):
+    name = 'flocker--' + name
     runtime = [runtime for runtime in self._get_runtimes() if runtime['name'] == name]
     return runtime[0] if len(runtime) > 0 else None
 
